@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daud's Mega Academy</title>
+    <style>
+        /* Modern UI Design */
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Roboto, sans-serif; }
+        body { background-color: #f0f4f8; display: flex; justify-content: center; }
+        .app-container { width: 100%; max-width: 480px; background: white; min-height: 100vh; position: relative; box-shadow: 0 10px 30px rgba(0,0,0,0.1); display: flex; flex-direction: column; }
+        
+        .page { display: none; padding: 20px; flex: 1; overflow-y: auto; animation: fadeIn 0.3s ease; }
+        .active { display: flex; flex-direction: column; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* Components */
+        .btn { width: 100%; padding: 16px; background: #0984e3; color: white; border: none; border-radius: 14px; font-weight: bold; cursor: pointer; font-size: 16px; margin-top: 15px; }
+        input { width: 100%; padding: 15px; margin: 10px 0; border: 1px solid #dcdde1; border-radius: 12px; font-size: 16px; background: #f9f9f9; }
+        .back-link { color: #0984e3; cursor: pointer; font-weight: 700; margin-bottom: 20px; display: block; text-decoration: none; }
+
+        /* Dashboard */
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 15px; }
+        .card { padding: 35px 10px; border-radius: 18px; text-align: center; color: white; font-weight: bold; cursor: pointer; transition: 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        .card:active { transform: scale(0.96); }
+        .math { background: #0984e3; } .eng { background: #e84393; } .phy { background: #6c5ce7; }
+        .chem { background: #00b894; } .urdu { background: #f39c12; } .cs { background: #2d3436; }
+
+        /* Detailed Content Styling */
+        .content-body { line-height: 1.7; color: #2f3640; text-align: justify; }
+        .content-body h3 { margin: 20px 0 10px 0; color: #0984e3; border-bottom: 2px solid #f0f2f5; padding-bottom: 5px; }
+        .content-body p { margin-bottom: 15px; font-size: 15px; }
+        .note-highlight { background: #e1f5fe; padding: 15px; border-radius: 10px; border-left: 5px solid #0984e3; font-style: italic; margin: 15px 0; }
+
+        /* Quiz UI */
+        .option-btn { width: 100%; padding: 14px; margin: 8px 0; border: 2px solid #f1f2f6; border-radius: 12px; background: white; text-align: left; cursor: pointer; font-size: 15px; }
+        .option-btn:hover { border-color: #0984e3; background: #f0f7ff; }
+        .score-box { text-align: center; margin-top: 50px; }
+        .score-val { font-size: 64px; color: #00b894; font-weight: 800; }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    
+    <div id="loginPage" class="page active">
+        <div style="text-align: center; padding-top: 100px;">
+            <h1 style="color: #0984e3; margin-bottom: 10px;">Daud's Academy</h1>
+            <p style="color: #7f8c8d;">Your digital gateway to knowledge</p>
+            <div style="margin-top: 40px;">
+                <input type="text" id="nameInput" placeholder="Enter Your Full Name">
+                <button class="btn" onclick="loginUser()">Login to Portal</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="dashboardPage" class="page">
+        <header style="margin-bottom: 20px;">
+            <h1 id="welcomeUser">Welcome!</h1>
+            <p style="color: #7f8c8d;">Choose a subject to start your journey.</p>
+        </header>
+        <div class="grid">
+            <div class="card math" onclick="openSubject('Mathematics')">Mathematics</div>
+            <div class="card eng" onclick="openSubject('English')">English</div>
+            <div class="card phy" onclick="openSubject('Physics')">Physics</div>
+            <div class="card chem" onclick="openSubject('Chemistry')">Chemistry</div>
+            <div class="card urdu" onclick="openSubject('Urdu')">Urdu</div>
+            <div class="card cs" onclick="openSubject('Computer Science')">Computer Science</div>
+        </div>
+    </div>
+
+    <div id="subjectPage" class="page">
+        <span class="back-link" onclick="navigateTo('dashboardPage')">← Back to Dashboard</span>
+        <h2 id="subjectTitle" style="font-size: 28px; margin-bottom: 10px;">Subject</h2>
+        <div id="notesArea" class="content-body">
+            </div>
+        <button class="btn" style="background: #2d3436; margin-top: 30px;" onclick="prepareQuiz()">Take Subject Quiz</button>
+    </div>
+
+    <div id="quizPage" class="page">
+        <span class="back-link" onclick="navigateTo('subjectPage')">← Exit Quiz</span>
+        <div style="background: #f8f9fa; padding: 20px; border-radius: 15px;">
+            <h3 id="qText" style="margin-bottom: 20px;">Question?</h3>
+            <div id="optionsArea"></div>
+        </div>
+        <p id="qProgress" style="margin-top: 20px; text-align: center; color: #7f8c8d; font-weight: bold;"></p>
+    </div>
+
+    <div id="resultPage" class="page">
+        <div class="score-box">
+            <h2>Quiz Results</h2>
+            <p>You have successfully completed the quiz!</p>
+            <div id="finalScore" class="score-val">0 / 5</div>
+            <button class="btn" onclick="navigateTo('dashboardPage')">Return to Home</button>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    let currentSubject = "";
+    let currentQIndex = 0;
+    let score = 0;
+
+    const db = {
+        'Mathematics': {
+            content: `
+                <h3>Module 1: The Power of Algebra</h3>
+                <p>Algebra is one of the broad parts of mathematics, together with number theory, geometry, and analysis. In its most general form, algebra is the study of mathematical symbols and the rules for manipulating these symbols; it is a unifying thread of almost all of mathematics.</p>
+                <div class="note-highlight">Algebra helps in finding the 'unknown' variables (x, y, z) which are used in everything from rocket science to building your own house.</div>
+                <p>An algebraic equation represents a scale, what is done on one side of the scale with a number is also done to the other side of the scale. The numbers are the constants. Algebra also includes real numbers, complex numbers, matrices, vectors, etc.</p>
+                
+                <h3>Module 2: Geometry and Shapes</h3>
+                <p>Geometry is a branch of mathematics that studies the sizes, shapes, positions, angles, and dimensions of things. Flat shapes like squares, circles, and triangles are a part of 2D geometry and are called planar shapes. Solid shapes like cubes, cylinders, cones, and spheres are a part of 3D geometry.</p>
+                <p>Basic Geometry is based on points, lines, and planes. A point has no dimension. A line is one-dimensional. A plane is two-dimensional. Geometry is used extensively in art, architecture, and physics.</p>
+                
+                <h3>Module 3: Calculus Introduction</h3>
+                <p>Calculus is the mathematical study of continuous change. It has two major branches: differential calculus and integral calculus. Differential calculus concerns instantaneous rates of change and the slopes of curves, while integral calculus concerns accumulation of quantities and the areas under and between curves.</p>
+            `,
+            quiz: [
+                {q: "Solve for x: 2x + 10 = 20", a: "5", o: ["5", "10", "15", "2"]},
+                {q: "What is the area of a circle?", a: "πr²", o: ["2πr", "πr²", "bh/2", "l*w"]},
+                {q: "A triangle with all equal sides is?", a: "Equilateral", o: ["Isosceles", "Scalene", "Equilateral", "Right"]},
+                {q: "What is 15% of 200?", a: "30", o: ["20", "30", "40", "15"]},
+                {q: "Who is the father of Algebra?", a: "Al-Khwarizmi", o: ["Newton", "Pythagoras", "Al-Khwarizmi", "Euclid"]}
+            ]
+        },
+        'English': {
+            content: `
+                <h3>Module 1: Mastering Tenses</h3>
+                <p>Tenses are the most important part of English Grammar. They tell us about the timing of an action. There are three main tenses: Present, Past, and Future. Each of these is further divided into four types: Simple, Continuous, Perfect, and Perfect Continuous.</p>
+                <p>For example: 'I write' (Simple Present), 'I am writing' (Present Continuous), 'I have written' (Present Perfect).</p>
+                
+                <h3>Module 2: Parts of Speech</h3>
+                <p>In English, words are categorized into eight parts of speech according to their function in a sentence. These are Noun, Pronoun, Verb, Adjective, Adverb, Preposition, Conjunction, and Interjection.</p>
+                <div class="note-highlight">Understanding parts of speech is essential for constructing grammatically correct sentences and improving writing skills.</div>
+                
+                <h3>Module 3: Vocabulary and Context</h3>
+                <p>Vocabulary building is a lifelong process. It involves learning new words and understanding their meanings in different contexts. Using synonyms and antonyms can make your language more expressive and professional.</p>
+            `,
+            quiz: [
+                {q: "Which is a proper Noun?", a: "Pakistan", o: ["City", "Country", "Pakistan", "Boy"]},
+                {q: "Past tense of 'Speak'?", a: "Spoke", o: ["Speaked", "Spoke", "Speaking", "Spoken"]},
+                {q: "Identify the Adjective: 'The blue sky'.", a: "Blue", o: ["The", "Blue", "Sky", "Is"]},
+                {q: "Opposite of 'Giant'?", a: "Tiny", o: ["Big", "Large", "Huge", "Tiny"]},
+                {q: "A person who writes books is a?", a: "Author", o: ["Painter", "Author", "Singer", "Pilot"]}
+            ]
+        },
+        'Physics': {
+            content: `
+                <h3>Module 1: Classical Mechanics</h3>
+                <p>Physics is the natural science that studies matter, its fundamental constituents, its motion and behavior through space and time, and the related entities of energy and force. Mechanics is the branch of physics dealing with the motion of objects.</p>
+                <p>Newton's three laws of motion are the foundation of classical mechanics. First Law (Inertia), Second Law (F=ma), and Third Law (Action and Reaction).</p>
+                
+                <h3>Module 2: Thermodynamics</h3>
+                <p>Thermodynamics is the branch of physics that deals with heat, work, and temperature, and their relation to energy, radiation, and physical properties of matter. The laws of thermodynamics describe how these quantities behave under various circumstances.</p>
+                
+                <h3>Module 3: Light and Optics</h3>
+                <p>Optics is the branch of physics that studies the behavior and properties of light, including its interactions with matter and the construction of instruments that use or detect it. Light behaves both as a wave and a particle.</p>
+            `,
+            quiz: [
+                {q: "What is the unit of Force?", a: "Newton", o: ["Joule", "Newton", "Watt", "Pascal"]},
+                {q: "Speed of light is approx?", a: "300,000 km/s", o: ["1000 km/s", "300,000 km/s", "5000 km/s", "Infinite"]},
+                {q: "Which lens is used for farsightedness?", a: "Convex", o: ["Concave", "Convex", "Plain", "Bifocal"]},
+                {q: "Energy of motion is called?", a: "Kinetic", o: ["Potential", "Kinetic", "Solar", "Chemical"]},
+                {q: "Current is measured in?", a: "Ampere", o: ["Volt", "Ohm", "Ampere", "Watt"]}
+            ]
+        },
+        'Chemistry': {
+            content: `
+                <h3>Module 1: Atomic Structure</h3>
+                <p>Chemistry is the scientific study of the properties and behavior of matter. It is a physical science within the natural sciences that studies the chemical elements that make up matter and compounds made of atoms, molecules, and ions.</p>
+                <div class="note-highlight">Atoms consist of a nucleus containing protons and neutrons, with electrons orbiting around the nucleus in shells.</div>
+                
+                <h3>Module 2: Periodic Table</h3>
+                <p>The periodic table is a tabular display of the chemical elements. It is widely used in chemistry, physics, and other sciences, and is generally seen as an icon of chemistry. It organizes elements by atomic number and chemical properties.</p>
+                
+                <h3>Module 3: Organic Chemistry</h3>
+                <p>Organic chemistry is the study of the structure, properties, composition, reactions, and preparation of carbon-containing compounds. Most organic compounds contain carbon and hydrogen, but they may also include any number of other elements.</p>
+            `,
+            quiz: [
+                {q: "Symbol for Gold?", a: "Au", o: ["Gd", "Ag", "Au", "Pb"]},
+                {q: "pH of pure Water?", a: "7", o: ["1", "5", "7", "14"]},
+                {q: "Gas used in balloons?", a: "Helium", o: ["Oxygen", "Helium", "Nitrogen", "Carbon"]},
+                {q: "Atomic number of Hydrogen?", a: "1", o: ["1", "2", "6", "8"]},
+                {q: "Common name for NaCl?", a: "Salt", o: ["Sugar", "Salt", "Baking Soda", "Soap"]}
+            ]
+        },
+        'Urdu': {
+            content: `
+                <h3>Module 1: Urdu Language History</h3>
+                <p>Urdu is an Indo-Aryan language spoken chiefly in South Asia. It is the national language and lingua franca of Pakistan. Urdu is historically associated with the Muslims of the region. It is a Persianized standard register of the Hindustani language.</p>
+                
+                <h3>Module 2: Literature and Poetry</h3>
+                <p>Urdu literature has a rich history of poetry (Shayari) and prose. Famous poets like Allama Iqbal and Mirza Ghalib have contributed immensely to the language. Iqbal is known as the national poet of Pakistan, who used his poetry to awaken the Muslims of India.</p>
+                
+                <h3>Module 3: Grammar (Qawaid)</h3>
+                <p>Urdu grammar includes Ism (Noun), Fail (Verb), and Sifat (Adjective). The script is written from right to left in the Nasta'liq style. Mastering Urdu requires understanding the delicate pronunciation of different letters like 'Qaaf' and 'Kaaf'.</p>
+            `,
+            quiz: [
+                {q: "National Poet of Pakistan?", a: "Allama Iqbal", o: ["Ghalib", "Faiz", "Allama Iqbal", "Hali"]},
+                {q: "Opposite of 'Subah'?", a: "Shaam", o: ["Raat", "Shaam", "Noon", "Din"]},
+                {q: "Ism-e-Khaas refers to?", a: "Proper Noun", o: ["Common Noun", "Proper Noun", "Verb", "Pronoun"]},
+                {q: "Total alphabets in Urdu?", a: "39", o: ["26", "39", "52", "40"]},
+                {q: "Founder of Urdu prose?", a: "Sir Syed Ahmed", o: ["Iqbal", "Ghalib", "Sir Syed Ahmed", "Saadat Hasan"]}
+            ]
+        },
+        'Computer Science': {
+            content: `
+                <h3>Module 1: Computer Architecture</h3>
+                <p>Computer science is the study of computation, automation, and information. Architecture refers to the set of rules and methods that describe the functionality, organization, and implementation of computer systems.</p>
+                <div class="note-highlight">The Von Neumann architecture is the most common design, consisting of a CPU, memory, and Input/Output devices.</div>
+                
+                <h3>Module 2: Operating Systems</h3>
+                <p>An operating system (OS) is system software that manages computer hardware, software resources, and provides common services for computer programs. Examples include Windows, macOS, Linux, and Android.</p>
+                
+                <h3>Module 3: Programming and Logic</h3>
+                <p>Programming is the process of creating a set of instructions that tell a computer how to perform a task. It involves logic building, algorithms, and syntax. Software Engineering applies engineering principles to software development (SDLC).</p>
+            `,
+            quiz: [
+                {q: "Full form of RAM?", a: "Random Access Memory", o: ["Read Access Memory", "Random Access Memory", "Run Active Module", "Real Access Mode"]},
+                {q: "Which is an Operating System?", a: "Linux", o: ["MS Word", "Linux", "Chrome", "Excel"]},
+                {q: "1024 MB equals?", a: "1 GB", o: ["1 KB", "1 MB", "1 GB", "1 TB"]},
+                {q: "Founder of Microsoft?", a: "Bill Gates", o: ["Steve Jobs", "Bill Gates", "Mark Zuckerberg", "Elon Musk"]},
+                {q: "Which is a 'Brain' of Computer?", a: "CPU", o: ["RAM", "HDD", "CPU", "GPU"]}
+            ]
+        }
+    };
+
+    function navigateTo(id) {
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+        // Scroll to top when changing page
+        document.getElementById(id).scrollTop = 0;
+    }
+
+    function loginUser() {
+        let name = document.getElementById('nameInput').value || "Student";
+        document.getElementById('welcomeUser').innerText = "Hello, " + name + "!";
+        navigateTo('dashboardPage');
+    }
+
+    function openSubject(sub) {
+        currentSubject = sub;
+        document.getElementById('subjectTitle').innerText = sub;
+        document.getElementById('notesArea').innerHTML = db[sub].content;
+        navigateTo('subjectPage');
+    }
+
+    function prepareQuiz() {
+        currentQIndex = 0;
+        score = 0;
+        showQuizQuestion();
+        navigateTo('quizPage');
+    }
+
+    function showQuizQuestion() {
+        let qData = db[currentSubject].quiz[currentQIndex];
+        document.getElementById('qText').innerText = qData.q;
+        document.getElementById('qProgress').innerText = `Question ${currentQIndex + 1} of 5`;
+        let area = document.getElementById('optionsArea');
+        area.innerHTML = "";
+        qData.o.forEach(opt => {
+            let b = document.createElement('button');
+            b.className = "option-btn";
+            b.innerText = opt;
+            b.onclick = () => {
+                if(opt === qData.a) score++;
+                currentQIndex++;
+                if(currentQIndex < 5) showQuizQuestion();
+                else {
+                    document.getElementById('finalScore').innerText = `${score} / 5`;
+                    navigateTo('resultPage');
+                }
+            };
+            area.appendChild(b);
+        });
+    }
+</script>
+
+</body>
+</html>
